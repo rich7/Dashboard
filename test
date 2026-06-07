@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Persoonlijk Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --bg2: #181b24; --bg3: #1e2130; --bg4: #252840;
+    --accent: #6c8fff; --accent2: #a78bfa; --accent3: #34d399;
+    --text: #e8eaf0; --text2: #9aa0b8; --text3: #5a6080;
+    --border: #2a2f47; --border2: #353a58;
+    --danger: #f87171; --warning: #fbbf24;
+    --radius: 10px; --radius2: 14px;
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+    --shadow: 0 2px 16px rgba(0,0,0,0.35);
+    --widget-col: 260px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 16px; line-height: 1.5; }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; background: var(--bg2); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .logo { font-size: 18px; font-weight: 600; color: var(--accent); letter-spacing: -0.3px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab {
+    padding: 6px 16px; border-radius: 7px; border: 1px solid transparent;
+    background: transparent; color: var(--text2); font-family: var(--font);
+    font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); background: var(--bg3); }
+  .tab.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+  #datetime-mini { font-family: var(--mono); font-size: 13px; color: var(--text3); text-align: right; line-height: 1.4; }
+
+  /* ── Layout ── */
+  .page-layout {
+    display: flex;
+    min-height: calc(100vh - 57px);
+  }
+
+  /* Left: main content */
+  .content-area {
+    flex: 1;
+    padding: 20px 24px;
+    min-width: 0;
+  }
+
+  /* Right: widget column — only shown on tab 0 */
+  .widget-col {
+    width: var(--widget-col);
+    flex-shrink: 0;
+    padding: 16px 12px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-left: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .widget-col.hidden { display: none; }
+
+  /* ── Tab panels ── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Widget cards ── */
+  .widget-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius2);
+    overflow: hidden;
+    position: relative;
+    transition: border-color 0.15s;
+  }
+  .widget-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .widget-card:hover { border-color: var(--border2); }
+
+  .widget-label {
+    font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase;
+    color: var(--text3); font-weight: 500; margin-bottom: 8px; display: block;
+  }
+  .widget-body { padding: 14px 14px 14px; }
+
+  /* ── Clock ── */
+  #clock-time { font-family: var(--mono); font-size: 34px; font-weight: 500; color: var(--text); letter-spacing: 2px; }
+  #clock-date { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  /* ── Timer ── */
+  #timer-display { font-family: var(--mono); font-size: 30px; color: var(--text); letter-spacing: 2px; }
+  .timer-btns { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+  .btn-xs {
+    padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text2); font-size: 13px;
+    font-family: var(--font); cursor: pointer; transition: all 0.15s;
+  }
+  .btn-xs:hover { color: var(--text); border-color: var(--accent); }
+  .btn-xs.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #timer-preset { font-size: 13px; color: var(--text3); margin-top: 8px; }
+  .preset-btn {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 13px; font-family: var(--font); padding: 0 3px;
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .preset-btn:hover { color: var(--accent2); }
+  .timer-custom { display: flex; gap: 4px; margin-top: 6px; align-items: center; }
+  .timer-custom-input {
+    width: 48px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-family: var(--mono); font-size: 13px; padding: 4px 4px;
+    outline: none; text-align: center; transition: border-color 0.15s;
+  }
+  .timer-custom-input:focus { border-color: var(--accent); }
+  .timer-custom-sep { color: var(--text3); font-size: 14px; font-weight: 600; }
+
+  /* ── Calendar ── */
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cal-nav { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 16px; padding: 2px 5px; border-radius: 4px; transition: color 0.15s; }
+  .cal-nav:hover { color: var(--text); }
+  #cal-month-label { font-size: 14px; font-weight: 500; color: var(--text); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; text-align: center; }
+  .cal-dow { font-size: 11px; color: var(--text3); font-weight: 500; padding: 2px 0 3px; }
+  .cal-day { font-size: 12px; padding: 3px 1px; border-radius: 4px; color: var(--text2); cursor: default; transition: background 0.1s; }
+  .cal-day.other-month { color: var(--text3); }
+  .cal-day.today { background: var(--accent); color: #fff; font-weight: 600; border-radius: 5px; }
+  .cal-day:not(.today):hover { background: var(--bg3); color: var(--text); }
+
+  /* ── Weather ── */
+  #weather-main { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  #weather-icon { font-size: 30px; }
+  #weather-temp { font-size: 30px; font-weight: 500; color: var(--text); }
+  #weather-desc { font-size: 14px; color: var(--text2); }
+  #weather-loc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  #weather-details { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .weather-detail { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .weather-detail span { color: var(--text3); display: block; }
+  #weather-loading { font-size: 14px; color: var(--text3); }
+  #weather-error { font-size: 13px; color: var(--danger); }
+  .weather-loc-form { display: flex; gap: 5px; margin-top: 10px; }
+  .weather-loc-input {
+    flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-family: var(--font); font-size: 13px; padding: 5px 8px; outline: none; transition: border-color 0.15s;
+  }
+  .weather-loc-input:focus { border-color: var(--accent); }
+  .weather-loc-input::placeholder { color: var(--text3); }
+  .weather-loc-btn {
+    padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border2);
+    background: var(--bg4); color: var(--text2); font-size: 13px; font-family: var(--font);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .weather-loc-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ── Link Blocks Grid ── */
+  .blocks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .link-block {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); overflow: hidden; transition: border-color 0.15s;
+  }
+  .link-block:hover { border-color: var(--border2); }
+  .block-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 12px 7px; border-bottom: 1px solid var(--border); background: var(--bg3);
+  }
+  .block-title-wrap { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+  .drag-handle {
+    cursor: grab; color: var(--text3); font-size: 12px; padding: 0 2px 0 0;
+    flex-shrink: 0; opacity: 0; transition: opacity 0.15s; user-select: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .link-block:hover .drag-handle { opacity: 1; }
+  .block-emoji { font-size: 15px; flex-shrink: 0; }
+  .block-title { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .block-actions { display: flex; gap: 3px; flex-shrink: 0; }
+  .btn-icon {
+    background: none; border: 1px solid transparent; color: var(--text3);
+    cursor: pointer; font-size: 13px; font-family: var(--font); padding: 3px 8px;
+    border-radius: 5px; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-icon:hover { color: var(--text); border-color: var(--border2); background: var(--bg4); }
+  .btn-icon.open-all { color: var(--accent); }
+  .btn-icon.open-all:hover { border-color: var(--accent); background: rgba(108,143,255,0.1); }
+  .block-links { padding: 4px 0; }
+  .link-item {
+    display: flex; align-items: center; padding: 6px 12px; gap: 8px;
+    text-decoration: none; color: var(--text2); font-size: 14px;
+    transition: all 0.12s; border-radius: 4px; margin: 1px 5px;
+  }
+  .link-item:hover { background: var(--bg3); color: var(--text); }
+  .link-item-favicon { width: 16px; height: 16px; border-radius: 2px; flex-shrink: 0; opacity: 0.8; }
+  .link-item-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .add-first-link { padding: 10px 12px; font-size: 13px; color: var(--text3); font-style: italic; text-align: center; }
+
+  .link-block.sortable-chosen { opacity: 0.85; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-color: var(--accent) !important; }
+  .link-block.sortable-ghost { opacity: 0.25; }
+
+  .add-block-btn {
+    background: var(--bg2); border: 1px dashed var(--border2); border-radius: var(--radius2);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 22px 14px; color: var(--text3); cursor: pointer; font-size: 13px;
+    font-family: var(--font); transition: all 0.15s; width: 100%;
+  }
+  .add-block-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(108,143,255,0.04); }
+
+  .section-title {
+    font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase;
+    color: var(--text3); font-weight: 500; margin-bottom: 10px;
+  }
+
+  /* ── Notes ── */
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .note-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); overflow: hidden; display: flex; flex-direction: column; }
+  .note-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg3); border-bottom: 1px solid var(--border); }
+  .note-title-input { background: none; border: none; color: var(--text); font-family: var(--font); font-size: 14px; font-weight: 600; flex: 1; outline: none; min-width: 0; }
+  .note-title-input::placeholder { color: var(--text3); }
+  .note-textarea { flex: 1; background: none; border: none; color: var(--text2); font-family: var(--font); font-size: 15px; padding: 12px 14px; outline: none; resize: none; min-height: 120px; line-height: 1.6; }
+  .note-textarea::placeholder { color: var(--text3); }
+  .note-footer { padding: 6px 14px; font-size: 12px; color: var(--text3); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .btn-del-note { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 13px; font-family: var(--font); padding: 2px 6px; border-radius: 4px; transition: all 0.15s; }
+  .btn-del-note:hover { color: var(--danger); background: rgba(248,113,113,0.1); }
+  .add-note-btn {
+    background: var(--bg2); border: 1px dashed var(--border2); border-radius: var(--radius2);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 22px 14px; color: var(--text3); cursor: pointer; font-size: 13px;
+    font-family: var(--font); transition: all 0.15s; width: 100%;
+  }
+  .add-note-btn:hover { border-color: var(--accent3); color: var(--accent3); background: rgba(52,211,153,0.04); }
+
+  /* ── Modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; width: 100%; max-width: 480px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .modal-close { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 20px; line-height: 1; padding: 4px; transition: color 0.15s; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 500; letter-spacing: 0.4px; }
+  .form-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 15px; padding: 8px 12px; outline: none; transition: border-color 0.15s; }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--text3); }
+  .link-edit-list { margin-top: 6px; }
+  .link-edit-item { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 6px 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); }
+  .link-edit-item input { flex: 1; background: none; border: none; color: var(--text); font-family: var(--font); font-size: 14px; outline: none; min-width: 0; }
+  .link-edit-item input::placeholder { color: var(--text3); }
+  .link-edit-item input:first-child { max-width: 120px; border-right: 1px solid var(--border); padding-right: 6px; }
+  .btn-del-link { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 3px; transition: color 0.15s; }
+  .btn-del-link:hover { color: var(--danger); }
+  .btn-add-link { width: 100%; padding: 8px; border-radius: var(--radius); background: none; border: 1px dashed var(--border2); color: var(--text3); cursor: pointer; font-size: 14px; font-family: var(--font); transition: all 0.15s; margin-bottom: 4px; }
+  .btn-add-link:hover { color: var(--accent); border-color: var(--accent); }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid var(--border); }
+  .btn-cancel { padding: 8px 18px; border-radius: var(--radius); border: 1px solid var(--border2); background: none; color: var(--text2); cursor: pointer; font-size: 15px; font-family: var(--font); transition: all 0.15s; }
+  .btn-cancel:hover { color: var(--text); background: var(--bg3); }
+  .btn-save { padding: 8px 20px; border-radius: var(--radius); border: none; background: var(--accent); color: #fff; cursor: pointer; font-size: 15px; font-weight: 500; font-family: var(--font); transition: opacity 0.15s; }
+  .btn-save:hover { opacity: 0.85; }
+  .btn-danger { padding: 8px 14px; border-radius: var(--radius); border: 1px solid rgba(248,113,113,0.3); background: none; color: var(--danger); cursor: pointer; font-size: 14px; font-family: var(--font); transition: all 0.15s; margin-right: auto; }
+  .btn-danger:hover { background: rgba(248,113,113,0.1); }
+
+  /* ── Snelnotitie widget ── */
+  .quicknote-textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text2); font-family: var(--font); font-size: 14px; line-height: 1.6;
+    padding: 8px 10px; resize: none; outline: none; min-height: 90px;
+    transition: border-color 0.15s; display: block;
+  }
+  .quicknote-textarea:focus { border-color: var(--accent); color: var(--text); }
+  .quicknote-textarea::placeholder { color: var(--text3); }
+  .quicknote-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--text3); }
+  .quicknote-saved { opacity: 0; transition: opacity 0.4s; font-size: 12px; color: var(--accent3); }
+  .quicknote-saved.show { opacity: 1; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">⬡ Dashboard</div>
+    <div class="tabs" id="tab-bar">
+      <button class="tab active" data-tab="0">Favorieten + Widgets</button>
+      <button class="tab" data-tab="1">Favorieten</button>
+      <button class="tab" data-tab="2">Notities</button>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="datetime-mini"></div>
+  </div>
+</div>
+
+<div class="page-layout">
+
+  <div class="content-area">
+
+    <!-- TAB 0 -->
+    <div class="tab-panel active" id="panel-0">
+      <div class="section-title">Links</div>
+      <div class="blocks-grid" id="grid-0"></div>
+      <div style="margin-top:12px">
+        <button class="add-block-btn" onclick="openAddBlock(0)">＋ Nieuw blok toevoegen</button>
+      </div>
+    </div>
+
+    <!-- TAB 1 -->
+    <div class="tab-panel" id="panel-1">
+      <div class="section-title">Links</div>
+      <div class="blocks-grid" id="grid-1"></div>
+      <div style="margin-top:12px">
+        <button class="add-block-btn" onclick="openAddBlock(1)">＋ Nieuw blok toevoegen</button>
+      </div>
+    </div>
+
+    <!-- TAB 2 -->
+    <div class="tab-panel" id="panel-2">
+      <div class="section-title">Notities</div>
+      <div class="notes-grid" id="notes-grid"></div>
+      <div style="margin-top:12px">
+        <button class="add-note-btn" onclick="addNote()">＋ Nieuwe notitie</button>
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+
+  <!-- Widget column (right side, tab 0 only) -->
+  <div class="widget-col" id="widget-col">
+
+    <div class="widget-card" id="clock-widget">
+      <div class="widget-body">
+        <span class="widget-label">Klok</span>
+        <div id="clock-time">00:00</div>
+        <div id="clock-date"></div>
+      </div>
+    </div>
+
+    <div class="widget-card" id="timer-widget">
+      <div class="widget-body">
+        <span class="widget-label">Timer</span>
+        <div id="timer-display">00:00</div>
+        <div class="timer-btns">
+          <button class="btn-xs" id="timer-start">▶ Start</button>
+          <button class="btn-xs" id="timer-pause">⏸ Pauze</button>
+          <button class="btn-xs" id="timer-reset">↺ Reset</button>
+        </div>
+        <div id="timer-preset">
+          Snel:
+          <button class="preset-btn" onclick="setTimer(5)">5m</button>
+          <button class="preset-btn" onclick="setTimer(10)">10m</button>
+          <button class="preset-btn" onclick="setTimer(15)">15m</button>
+          <button class="preset-btn" onclick="setTimer(25)">25m</button>
+          <button class="preset-btn" onclick="setTimer(30)">30m</button>
+        </div>
+        <div class="timer-custom">
+          <input class="timer-custom-input" id="timer-custom-m" type="number" min="0" max="99" placeholder="mm">
+          <span class="timer-custom-sep">:</span>
+          <input class="timer-custom-input" id="timer-custom-s" type="number" min="0" max="59" placeholder="ss">
+          <button class="btn-xs" onclick="setTimerCustom()">Stel in</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="widget-card" id="cal-widget">
+      <div class="widget-body">
+        <span class="widget-label">Kalender</span>
+        <div class="cal-header">
+          <button class="cal-nav" id="cal-prev">‹</button>
+          <span id="cal-month-label"></span>
+          <button class="cal-nav" id="cal-next">›</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+    </div>
+
+    <div class="widget-card" id="weather-widget">
+      <div class="widget-body">
+        <span class="widget-label">Weer</span>
+        <div id="weather-loading">Locatie ophalen…</div>
+        <div id="weather-content" style="display:none">
+          <div id="weather-main">
+            <span id="weather-icon"></span>
+            <span id="weather-temp"></span>
+          </div>
+          <div id="weather-desc"></div>
+          <div id="weather-loc"></div>
+          <div id="weather-details">
+            <div class="weather-detail"><span>Vochtigheid</span><span id="wh"></span></div>
+            <div class="weather-detail"><span>Wind</span><span id="ww"></span></div>
+            <div class="weather-detail"><span>Gevoel</span><span id="wf"></span></div>
+          </div>
+        </div>
+        <div id="weather-error" style="display:none"></div>
+        <div class="weather-loc-form">
+          <input class="weather-loc-input" id="weather-loc-input" type="text" placeholder="Stad of postcode…">
+          <button class="weather-loc-btn" onclick="loadWeatherByCity()">↻</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="widget-card" id="quicknote-widget">
+      <div class="widget-body">
+        <span class="widget-label">Snelnotitie</span>
+        <textarea class="quicknote-textarea" id="quicknote-text" placeholder="Noteer iets snel…" spellcheck="false"></textarea>
+        <div class="quicknote-footer">
+          <span id="quicknote-chars">0 tekens</span>
+          <span class="quicknote-saved" id="quicknote-saved">✓ Opgeslagen</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /widget-col -->
+
+</div><!-- /page-layout -->
+
+<!-- Edit Block Modal -->
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title-txt">Blok bewerken</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">EMOJI / ICOON</label>
+        <input class="form-input" id="edit-emoji" type="text" placeholder="🔗" maxlength="4" style="width:70px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NAAM BLOK</label>
+        <input class="form-input" id="edit-title" type="text" placeholder="Mijn links">
+      </div>
+      <div class="form-group">
+        <label class="form-label">LINKS</label>
+        <div class="link-edit-list" id="link-edit-list"></div>
+        <button class="btn-add-link" onclick="addLinkRow()">＋ Link toevoegen</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="btn-delete-block" onclick="deleteBlock()">Verwijder blok</button>
+      <button class="btn-cancel" onclick="closeModal()">Annuleren</button>
+      <button class="btn-save" onclick="saveBlock()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'personal_dash_v3';
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+function defaultData() {
+  return {
+    tabs: [
+      { blocks: [
+        { id: uid(), emoji:'🔍', title:'Zoeken', links:[{name:'Google',url:'https://google.com'},{name:'DuckDuckGo',url:'https://duckduckgo.com'},{name:'Bing',url:'https://bing.com'}]},
+        { id: uid(), emoji:'📰', title:'Nieuws', links:[{name:'NU.nl',url:'https://nu.nl'},{name:'NOS',url:'https://nos.nl'},{name:'RTL Nieuws',url:'https://rtlnieuws.nl'}]},
+        { id: uid(), emoji:'📦', title:'Tools', links:[{name:'ChatGPT',url:'https://chatgpt.com'},{name:'GitHub',url:'https://github.com'},{name:'Wikipedia',url:'https://wikipedia.org'}]},
+      ]},
+      { blocks: [
+        { id: uid(), emoji:'🛒', title:'Winkelen', links:[{name:'Bol.com',url:'https://bol.com'},{name:'Amazon NL',url:'https://amazon.nl'},{name:'Marktplaats',url:'https://marktplaats.nl'}]},
+        { id: uid(), emoji:'🏦', title:'Financiën', links:[{name:'ING',url:'https://ing.nl'},{name:'Belastingdienst',url:'https://belastingdienst.nl'}]},
+      ]}
+    ],
+    notes: [
+      { id: uid(), title:'Notitie 1', body:'Schrijf hier je aantekeningen…', updated: Date.now() }
+    ]
+  };
+}
+
+let data = (() => { try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : defaultData(); } catch { return defaultData(); } })();
+function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {} }
+
+// ─── Tabs ──────────────────────────────────────────────────────────────────
+let activeTab = 0;
+document.getElementById('tab-bar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  activeTab = +btn.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', +t.dataset.tab === activeTab));
+  document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', i === activeTab));
+  document.getElementById('widget-col').classList.toggle('hidden', activeTab !== 0);
+});
+
+// ─── Render Blocks ─────────────────────────────────────────────────────────
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderBlocks() {
+  [0,1].forEach(ti => {
+    const grid = document.getElementById('grid-'+ti);
+    if (!grid) return;
+    if (grid._sortable) { grid._sortable.destroy(); grid._sortable = null; }
+    grid.innerHTML = '';
+    data.tabs[ti].blocks.forEach(block => {
+      const div = document.createElement('div');
+      div.className = 'link-block';
+      div.dataset.id = block.id;
+      const links = block.links.map(l => `
+        <a class="link-item" href="${esc(l.url)}" target="_blank" rel="noopener">
+          <img class="link-item-favicon" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(l.url)}&sz=32" onerror="this.style.display='none'" loading="lazy">
+          <span class="link-item-name">${esc(l.name)}</span>
+        </a>`).join('');
+      div.innerHTML = `
+        <div class="block-header">
+          <div class="block-title-wrap">
+            <span class="drag-handle" title="Verplaats blok">⠿</span>
+            <span class="block-emoji">${block.emoji||'🔗'}</span>
+            <span class="block-title">${esc(block.title)}</span>
+          </div>
+          <div class="block-actions">
+            <button class="btn-icon open-all" onclick="openAll('${block.id}',${ti})">Alles</button>
+            <button class="btn-icon edit-btn" onclick="openEdit('${block.id}',${ti})">✎ Edit</button>
+          </div>
+        </div>
+        <div class="block-links">${links || '<div class="add-first-link">Geen links — klik Edit</div>'}</div>`;
+      grid.appendChild(div);
+    });
+    grid._sortable = Sortable.create(grid, {
+      handle: '.drag-handle', animation: 160,
+      ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+      onEnd: evt => {
+        const blocks = data.tabs[ti].blocks;
+        const moved = blocks.splice(evt.oldIndex, 1)[0];
+        blocks.splice(evt.newIndex, 0, moved);
+        save();
+      }
+    });
+  });
+}
+
+function openAll(blockId, tabIdx) {
+  const block = data.tabs[tabIdx].blocks.find(b => b.id === blockId);
+  if (!block) return;
+  block.links.forEach((l, i) => setTimeout(() => { try { window.open(l.url,'_blank','noopener'); } catch {} }, i * 100));
+}
+
+// ─── Add / Edit Block ──────────────────────────────────────────────────────
+let editingTabIdx = null, editingBlockId = null;
+
+function openAddBlock(ti) {
+  editingTabIdx = ti; editingBlockId = null;
+  document.getElementById('modal-title-txt').textContent = 'Nieuw blok';
+  document.getElementById('edit-emoji').value = '🔗';
+  document.getElementById('edit-title').value = '';
+  document.getElementById('link-edit-list').innerHTML = '';
+  document.getElementById('btn-delete-block').style.display = 'none';
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+function openEdit(blockId, ti) {
+  const block = data.tabs[ti].blocks.find(b => b.id === blockId);
+  if (!block) return;
+  editingTabIdx = ti; editingBlockId = blockId;
+  document.getElementById('modal-title-txt').textContent = 'Blok bewerken';
+  document.getElementById('edit-emoji').value = block.emoji||'🔗';
+  document.getElementById('edit-title').value = block.title;
+  document.getElementById('link-edit-list').innerHTML = '';
+  block.links.forEach(l => addLinkRow(l.name, l.url));
+  document.getElementById('btn-delete-block').style.display = 'block';
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+function addLinkRow(name='', url='') {
+  const row = document.createElement('div');
+  row.className = 'link-edit-item';
+  row.innerHTML = `
+    <input type="text" placeholder="Naam" value="${esc(name)}">
+    <input type="url" placeholder="https://..." value="${esc(url)}">
+    <button class="btn-del-link" onclick="this.parentElement.remove()">✕</button>`;
+  document.getElementById('link-edit-list').appendChild(row);
+}
+
+function saveBlock() {
+  const emoji = document.getElementById('edit-emoji').value.trim()||'🔗';
+  const title = document.getElementById('edit-title').value.trim()||'Nieuw blok';
+  const links = [...document.getElementById('link-edit-list').querySelectorAll('.link-edit-item')].map(row => {
+    const [n,u] = row.querySelectorAll('input');
+    return n.value.trim() && u.value.trim() ? {name:n.value.trim(),url:u.value.trim()} : null;
+  }).filter(Boolean);
+  if (editingBlockId) {
+    const b = data.tabs[editingTabIdx].blocks.find(b => b.id === editingBlockId);
+    if (b) { b.emoji=emoji; b.title=title; b.links=links; }
+  } else {
+    data.tabs[editingTabIdx].blocks.push({id:uid(),emoji,title,links});
+  }
+  save(); renderBlocks(); closeModal();
+}
+
+function deleteBlock() {
+  if (!editingBlockId) return;
+  data.tabs[editingTabIdx].blocks = data.tabs[editingTabIdx].blocks.filter(b => b.id !== editingBlockId);
+  save(); renderBlocks(); closeModal();
+}
+
+function closeModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+document.getElementById('edit-modal').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
+
+// ─── Notes ────────────────────────────────────────────────────────────────
+function renderNotes() {
+  const grid = document.getElementById('notes-grid');
+  grid.innerHTML = '';
+  data.notes.forEach(note => {
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    const updated = new Date(note.updated).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    card.innerHTML = `
+      <div class="note-header">
+        <input class="note-title-input" placeholder="Titel…" value="${esc(note.title)}" oninput="updateNote('${note.id}','title',this.value)">
+      </div>
+      <textarea class="note-textarea" placeholder="Schrijf hier…" oninput="updateNote('${note.id}','body',this.value)">${esc(note.body)}</textarea>
+      <div class="note-footer">
+        <span>Bijgewerkt: ${updated}</span>
+        <button class="btn-del-note" onclick="deleteNote('${note.id}')">Verwijder</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function addNote() {
+  data.notes.unshift({id:uid(),title:'',body:'',updated:Date.now()});
+  save(); renderNotes();
+  setTimeout(() => document.querySelector('.note-title-input')?.focus(), 50);
+}
+function updateNote(id,field,val) {
+  const n = data.notes.find(n=>n.id===id);
+  if (n) { n[field]=val; n.updated=Date.now(); save(); }
+  const card = document.querySelector(`[oninput*="${id}"]`)?.closest('.note-card');
+  if (card) { const f=card.querySelector('.note-footer span'); if(f) f.textContent='Bijgewerkt: '+new Date().toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+}
+function deleteNote(id) { data.notes=data.notes.filter(n=>n.id!==id); save(); renderNotes(); }
+
+// ─── Clock ────────────────────────────────────────────────────────────────
+const DAYS_NL=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+const MONTHS_NL=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+
+function updateClock() {
+  const now = new Date();
+  const h=String(now.getHours()).padStart(2,'0'), m=String(now.getMinutes()).padStart(2,'0');
+  const timeStr=`${h}:${m}`;
+  document.getElementById('clock-time').textContent=timeStr;
+  document.getElementById('clock-date').textContent=`${DAYS_NL[now.getDay()]} ${now.getDate()} ${MONTHS_NL[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById('datetime-mini').innerHTML=timeStr+'<br>'+`${now.getDate()} ${MONTHS_NL[now.getMonth()].slice(0,3)}`;
+}
+setInterval(updateClock, 5000); updateClock();
+
+// ─── Timer ────────────────────────────────────────────────────────────────
+let timerSeconds=0, timerInterval=null, timerCountdown=false;
+
+function updateTimerDisplay() {
+  const m=Math.floor(Math.abs(timerSeconds)/60), s=Math.abs(timerSeconds)%60;
+  document.getElementById('timer-display').textContent=(timerSeconds<0?'-':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function setTimer(minutes) {
+  clearInterval(timerInterval); timerInterval=null;
+  timerSeconds=minutes*60; timerCountdown=true;
+  document.getElementById('timer-start').classList.remove('active');
+  updateTimerDisplay();
+}
+
+function setTimerCustom() {
+  const m=Math.max(0,Math.min(99,parseInt(document.getElementById('timer-custom-m').value)||0));
+  const s=Math.max(0,Math.min(59,parseInt(document.getElementById('timer-custom-s').value)||0));
+  if (m===0&&s===0) return;
+  clearInterval(timerInterval); timerInterval=null;
+  timerSeconds=m*60+s; timerCountdown=true;
+  document.getElementById('timer-start').classList.remove('active');
+  document.getElementById('timer-custom-m').value='';
+  document.getElementById('timer-custom-s').value='';
+  updateTimerDisplay();
+}
+
+document.getElementById('timer-start').addEventListener('click', () => {
+  if (timerInterval) return;
+  document.getElementById('timer-start').classList.add('active');
+  timerInterval=setInterval(()=>{ timerCountdown?timerSeconds--:timerSeconds++; updateTimerDisplay(); },1000);
+});
+document.getElementById('timer-pause').addEventListener('click', () => {
+  clearInterval(timerInterval); timerInterval=null;
+  document.getElementById('timer-start').classList.remove('active');
+});
+document.getElementById('timer-reset').addEventListener('click', () => {
+  clearInterval(timerInterval); timerInterval=null; timerSeconds=0; timerCountdown=false;
+  document.getElementById('timer-start').classList.remove('active');
+  updateTimerDisplay();
+});
+updateTimerDisplay();
+
+// ─── Calendar ─────────────────────────────────────────────────────────────
+let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
+function renderCal() {
+  document.getElementById('cal-month-label').textContent=`${MONTHS_NL[calMonth].slice(0,3)} ${calYear}`;
+  const grid=document.getElementById('cal-grid');
+  grid.innerHTML='';
+  ['ma','di','wo','do','vr','za','zo'].forEach(d=>{const el=document.createElement('div');el.className='cal-dow';el.textContent=d;grid.appendChild(el);});
+  const first=new Date(calYear,calMonth,1);
+  const startDow=(first.getDay()+6)%7;
+  const totalDays=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date();
+  const prevDays=new Date(calYear,calMonth,0).getDate();
+  for(let i=0;i<startDow;i++){const el=document.createElement('div');el.className='cal-day other-month';el.textContent=prevDays-startDow+1+i;grid.appendChild(el);}
+  for(let d=1;d<=totalDays;d++){const el=document.createElement('div');el.className='cal-day';if(d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear())el.classList.add('today');el.textContent=d;grid.appendChild(el);}
+  const rem=42-startDow-totalDays;
+  for(let d=1;d<=rem;d++){const el=document.createElement('div');el.className='cal-day other-month';el.textContent=d;grid.appendChild(el);}
+}
+document.getElementById('cal-prev').addEventListener('click',()=>{calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCal();});
+document.getElementById('cal-next').addEventListener('click',()=>{calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCal();});
+renderCal();
+
+// ─── Weather ──────────────────────────────────────────────────────────────
+function wxEmoji(c){if(c===0)return'☀️';if(c<=2)return'⛅';if(c<=3)return'☁️';if(c<=48)return'🌫️';if(c<=57)return'🌦️';if(c<=67)return'🌧️';if(c<=77)return'🌨️';if(c<=82)return'🌦️';if(c<=86)return'❄️';if(c<=99)return'⛈️';return'🌡️';}
+function wxDesc(c){if(c===0)return'Helder';if(c<=1)return'Overwegend helder';if(c<=2)return'Gedeeltelijk bewolkt';if(c<=3)return'Bewolkt';if(c<=45)return'Mistig';if(c<=57)return'Motregen';if(c<=67)return'Regen';if(c<=77)return'Sneeuw';if(c<=82)return'Regenbuien';if(c<=86)return'Sneeuwbuien';if(c<=99)return'Onweer';return'Onbekend';}
+
+function showWeatherData(wx, cityName) {
+  const c=wx.current;
+  document.getElementById('weather-icon').textContent=wxEmoji(c.weather_code);
+  document.getElementById('weather-temp').textContent=Math.round(c.temperature_2m)+'°C';
+  document.getElementById('weather-desc').textContent=wxDesc(c.weather_code);
+  document.getElementById('weather-loc').textContent=cityName;
+  document.getElementById('wh').textContent=c.relative_humidity_2m+'%';
+  document.getElementById('ww').textContent=Math.round(c.wind_speed_10m)+' km/h';
+  document.getElementById('wf').textContent=Math.round(c.apparent_temperature)+'°C';
+  document.getElementById('weather-loading').style.display='none';
+  document.getElementById('weather-error').style.display='none';
+  document.getElementById('weather-content').style.display='block';
+  try{localStorage.setItem('dash_weather_city',cityName);}catch{}
+}
+function showWeatherError(msg) {
+  document.getElementById('weather-loading').style.display='none';
+  document.getElementById('weather-content').style.display='none';
+  const e=document.getElementById('weather-error');
+  e.style.display='block'; e.textContent=msg;
+}
+async function fetchWeatherCoords(lat,lon,city) {
+  try {
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&wind_speed_unit=kmh&timezone=auto`);
+    showWeatherData(await r.json(), city);
+  } catch { showWeatherError('Kon weerdata niet laden.'); }
+}
+async function loadWeatherByCity() {
+  const input=document.getElementById('weather-loc-input');
+  const city=input.value.trim(); if(!city) return;
+  document.getElementById('weather-loading').style.display='block';
+  document.getElementById('weather-loading').textContent='Zoeken…';
+  document.getElementById('weather-content').style.display='none';
+  document.getElementById('weather-error').style.display='none';
+  try {
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`);
+    const geo=await r.json();
+    if(!geo.length){showWeatherError(`"${city}" niet gevonden.`);return;}
+    input.value='';
+    await fetchWeatherCoords(parseFloat(geo[0].lat),parseFloat(geo[0].lon),geo[0].display_name.split(',')[0]);
+  } catch { showWeatherError('Zoeken mislukt.'); }
+}
+document.getElementById('weather-loc-input').addEventListener('keydown',e=>{if(e.key==='Enter')loadWeatherByCity();});
+
+async function loadWeather() {
+  try{const saved=localStorage.getItem('dash_weather_city');if(saved){document.getElementById('weather-loc-input').value=saved;await loadWeatherByCity();return;}}catch{}
+  if(!navigator.geolocation){showWeatherError('Vul een stad in.');return;}
+  navigator.geolocation.getCurrentPosition(
+    async pos=>{
+      try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);const g=await r.json();const city=g.address?.city||g.address?.town||g.address?.village||'Jouw locatie';await fetchWeatherCoords(pos.coords.latitude,pos.coords.longitude,city);}catch{await fetchWeatherCoords(pos.coords.latitude,pos.coords.longitude,'Jouw locatie');}
+    },
+    ()=>showWeatherError('Vul een stad of postcode in.'),
+    {timeout:6000}
+  );
+}
+loadWeather();
+
+// ─── Snelnotitie ──────────────────────────────────────────────────────────
+const QN_KEY = 'dash_quicknote';
+let qnSaveTimer = null;
+
+function initQuicknote() {
+  const ta = document.getElementById('quicknote-text');
+  const chars = document.getElementById('quicknote-chars');
+  const saved = document.getElementById('quicknote-saved');
+
+  // Load saved text
+  try { ta.value = localStorage.getItem(QN_KEY) || ''; } catch {}
+  chars.textContent = ta.value.length + ' tekens';
+
+  ta.addEventListener('input', () => {
+    chars.textContent = ta.value.length + ' tekens';
+    saved.classList.remove('show');
+    clearTimeout(qnSaveTimer);
+    qnSaveTimer = setTimeout(() => {
+      try { localStorage.setItem(QN_KEY, ta.value); } catch {}
+      saved.classList.add('show');
+      setTimeout(() => saved.classList.remove('show'), 2000);
+    }, 600);
+  });
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+renderBlocks();
+renderNotes();
+initQuicknote();
+</script>
+</body>
+</html>
