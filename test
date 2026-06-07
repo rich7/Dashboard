@@ -268,6 +268,40 @@
   .btn-danger { padding: 8px 14px; border-radius: var(--radius); border: 1px solid rgba(248,113,113,0.3); background: none; color: var(--danger); cursor: pointer; font-size: 14px; font-family: var(--font); transition: all 0.15s; margin-right: auto; }
   .btn-danger:hover { background: rgba(248,113,113,0.1); }
 
+  /* ── Export / Import ── */
+  .btn-exim {
+    padding: 6px 13px; border-radius: 7px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text2); font-family: var(--font);
+    font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-exim:hover { color: var(--text); border-color: var(--accent); background: var(--bg4); }
+
+  .exim-modal { max-width: 540px; }
+  .exim-tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .exim-tab {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid transparent;
+    background: none; color: var(--text2); font-family: var(--font);
+    font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  .exim-tab.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+  .exim-tab:hover:not(.active) { background: var(--bg3); color: var(--text); }
+  .exim-section { display: none; }
+  .exim-section.active { display: block; }
+  .exim-textarea {
+    width: 100%; height: 200px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text2); font-family: var(--mono); font-size: 12px;
+    padding: 10px 12px; outline: none; resize: vertical; transition: border-color 0.15s; line-height: 1.5;
+  }
+  .exim-textarea:focus { border-color: var(--accent); }
+  .exim-hint { font-size: 12px; color: var(--text3); margin-bottom: 8px; line-height: 1.5; }
+  .exim-status { font-size: 13px; margin-top: 8px; min-height: 20px; }
+  .exim-status.ok { color: var(--accent3); }
+  .exim-status.err { color: var(--danger); }
+  .btn-full { width: 100%; padding: 9px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); font-family: var(--font); font-size: 14px; cursor: pointer; transition: all 0.15s; margin-bottom: 8px; text-align: left; }
+  .btn-full:hover { border-color: var(--accent); color: var(--text); background: var(--bg4); }
+  .btn-full.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  .btn-full.primary:hover { opacity: 0.85; }
+
   /* ── Snelnotitie widget ── */
   .quicknote-textarea {
     width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
@@ -299,6 +333,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button class="btn-exim" onclick="openExIm()">⬍ Export / Import</button>
     <div id="datetime-mini"></div>
   </div>
 </div>
@@ -455,22 +490,124 @@
   </div>
 </div>
 
+<!-- Export / Import Modal -->
+<div class="modal-overlay hidden" id="exim-modal">
+  <div class="modal exim-modal">
+    <div class="modal-header">
+      <span class="modal-title">Export / Import</span>
+      <button class="modal-close" onclick="closeExIm()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="exim-tabs">
+        <button class="exim-tab active" onclick="switchEximTab('export')">⬆ Export</button>
+        <button class="exim-tab" onclick="switchEximTab('import')">⬇ Import</button>
+      </div>
+
+      <!-- Export -->
+      <div class="exim-section active" id="exim-export">
+        <p class="exim-hint">Kopieer de JSON hieronder en sla hem op als backup. Je kunt hem later importeren op een andere browser of apparaat.</p>
+        <textarea class="exim-textarea" id="exim-export-text" readonly spellcheck="false"></textarea>
+        <button class="btn-full primary" onclick="copyExport()" style="margin-top:8px">⎘ Kopieer naar klembord</button>
+        <button class="btn-full" onclick="downloadExport()">⬇ Download als .json bestand</button>
+        <div class="exim-status" id="exim-export-status"></div>
+      </div>
+
+      <!-- Import -->
+      <div class="exim-section" id="exim-import">
+        <p class="exim-hint">Plak een eerder geëxporteerde JSON hieronder, of upload een .json bestand. <strong style="color:var(--warning)">Let op: dit overschrijft alle huidige data.</strong></p>
+        <button class="btn-full" onclick="document.getElementById('exim-file-input').click()">📂 Kies .json bestand…</button>
+        <input type="file" id="exim-file-input" accept=".json,application/json" style="display:none" onchange="loadImportFile(event)">
+        <textarea class="exim-textarea" id="exim-import-text" placeholder="Of plak JSON hier…" spellcheck="false"></textarea>
+        <button class="btn-full primary" onclick="doImport()" style="margin-top:8px">⬇ Importeren</button>
+        <div class="exim-status" id="exim-import-status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── State ────────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'personal_dash_v3';
+const STORAGE_KEY = 'personal_dash_v4';
 function uid() { return Math.random().toString(36).slice(2,9); }
 
 function defaultData() {
   return {
     tabs: [
       { blocks: [
-        { id: uid(), emoji:'🔍', title:'Zoeken', links:[{name:'Google',url:'https://google.com'},{name:'DuckDuckGo',url:'https://duckduckgo.com'},{name:'Bing',url:'https://bing.com'}]},
-        { id: uid(), emoji:'📰', title:'Nieuws', links:[{name:'NU.nl',url:'https://nu.nl'},{name:'NOS',url:'https://nos.nl'},{name:'RTL Nieuws',url:'https://rtlnieuws.nl'}]},
-        { id: uid(), emoji:'📦', title:'Tools', links:[{name:'ChatGPT',url:'https://chatgpt.com'},{name:'GitHub',url:'https://github.com'},{name:'Wikipedia',url:'https://wikipedia.org'}]},
+        { id: uid(), emoji:'💼', title:'A-Style Werk', links:[
+          {name:'Planning Intake', url:'https://docs.google.com/spreadsheets/d/10Z16-reVmSOiOQCRd1sLLKz64Xu4KEQujvCi3OJ6zK8/edit#gid=748185559'},
+          {name:'Boekingsformulier', url:'https://docs.google.com/spreadsheets/d/1J_UOmZuAGGXEjh2cOHJEXE0mSD_oPxBXMbRPdj9AnvY/edit#gid=0'},
+          {name:'Dagen beschikbaar', url:'https://docs.google.com/spreadsheets/d/1c0st1UiTia02PG4WAaWtw2U2f3V1JY3gzgO9cPTzN1w/edit#gid=0'},
+          {name:'Kassa Opslag', url:'https://docs.google.com/spreadsheets/d/1djn-luZ5XnRR7cRIuG79HZWt8w2xhqHFmQmDN3CgNmk/edit#gid=0'},
+          {name:'Rooster', url:'https://docs.google.com/spreadsheets/d/1aegoJqc1sOtpuhRJmRSvp1eYbZYp1rKg_H1E-obusr0/edit#gid=24'},
+          {name:'A-Style hoofdpagina', url:'https://astyle.home.xs4all.nl/beautyfarm/index.html'},
+          {name:'A-Style prijslijst', url:'http://kuuroord-nieuwegein.nl/beautyfarm/spa_wellness_arrangementen/info_all_blocks.html'},
+        ]},
+        { id: uid(), emoji:'📧', title:'E-mail & Berichten', links:[
+          {name:'Proton Mail', url:'https://mail.protonmail.com/login'},
+          {name:'Yahoo Mail', url:'https://mail.yahoo.com/d/folders/1?.src=fp'},
+          {name:'Gmail', url:'https://mail.google.com/mail/u/0/#inbox'},
+          {name:'WhatsApp Web', url:'https://web.whatsapp.com/'},
+        ]},
+        { id: uid(), emoji:'🔍', title:'Zoeken', links:[
+          {name:'Startpage', url:'https://www.startpage.com/do/mypage.pl?prfh=disable_family_filterEEE1N1Ndisable_open_in_new_windowEEE0N1Ndisable_video_family_filterEEE1N1Nenable_post_methodEEE1N1Nenable_proxy_safety_suggestEEE1N1Nenable_stay_controlEEE1N1Ngeo_mapEEE1N1Nlang_homepageEEEs%2Fdefault%2Fnl%2FN1NlanguageEEEnederlandsN1Nlanguage_uiEEEnederlandsN1Nnum_of_resultsEEE20N1Nother_iaEEE1N1Nsearch_results_regionEEEallN1NsuggestionsEEE1N1Nwikipedia_iaEEE1N1Nwt_unitEEEcelsius'},
+          {name:'Mojeek', url:'https://www.mojeek.com/'},
+          {name:'DuckDuckGo', url:'https://duckduckgo.com/?natb=v261-5c_&cp=atbhc'},
+          {name:'Google', url:'https://www.google.com/'},
+        ]},
+        { id: uid(), emoji:'🎬', title:'Media', links:[
+          {name:'YouTube', url:'https://www.youtube.com/'},
+          {name:'Spotify', url:'https://open.spotify.com/'},
+          {name:'The Onion', url:'http://www.theonion.com/'},
+          {name:'Alt. Software', url:'https://alternativeto.net/'},
+          {name:'Gratis softwaresite', url:'https://www.gratissoftwaresite.nl/'},
+        ]},
+        { id: uid(), emoji:'📈', title:'Financiën & Beurs', links:[
+          {name:'TradingView', url:'https://www.tradingview.com/markets/'},
+          {name:'Yahoo Finance', url:'https://finance.yahoo.com/'},
+          {name:'MarketWatch', url:'http://www.marketwatch.com/'},
+          {name:'Stock Analysis', url:'https://stockanalysis.com/'},
+          {name:'The Street', url:'https://www.thestreet.com/'},
+          {name:'Mintos', url:'https://www.mintos.com/en/login'},
+          {name:'DeGiro', url:'https://trader.degiro.nl/login/nl#/login'},
+          {name:'AEX koers', url:'https://www.iex.nl/Koersen/Default.aspx'},
+          {name:'EUR/RUB', url:'https://finance.yahoo.com/quote/EURRUB=X/'},
+          {name:'Reddit Pennystocks', url:'https://www.reddit.com/r/pennystocks/top/'},
+          {name:'Watchlist', url:'https://docs.google.com/spreadsheets/d/14Wz_XbBy0J8-_mjlrTXbTBE5ex6LIFlFFISmSBeDHfs/edit?gid=1664494039#gid=1664494039'},
+          {name:'RichMaker', url:'https://docs.google.com/spreadsheets/d/1nLfKvAqrkX0lCutQv0-NiGz2qZiu9kog_8YEm70Y0rM/edit?gid=119951358#gid=119951358'},
+        ]},
+        { id: uid(), emoji:'🌦️', title:'Weer', links:[
+          {name:'14-daags weer Vianen', url:'https://www.weerplaza.nl/nederland/vianen/19614/'},
+          {name:'Buienradar', url:'https://www.buienradar.nl/weer/Vianen/NL/2745580'},
+          {name:'Windy', url:'https://www.windy.com/nl/-Regen-onweer-rain?rain,53.762,10.327,5,i:pressure,m:fbEaf6j'},
+          {name:'Ventusky', url:'https://www.ventusky.com/?p=-14;70;1&l=temperature-2m'},
+          {name:'SnowRadar / Sat24', url:'https://en.sat24.com/en/forecastimages'},
+          {name:'Globe Wind', url:'https://earth.nullschool.net/#current/wind/isobaric/250hPa/orthographic=-2.13,17.29,638/loc=-5.129,56.179'},
+          {name:'Visual Crossing', url:'https://www.visualcrossing.com/weather-data'},
+        ]},
+        { id: uid(), emoji:'🗺️', title:'Kaarten', links:[
+          {name:'Google Maps', url:'https://www.google.com/maps'},
+          {name:'My Maps', url:'https://www.google.com/maps/d/edit?mid=1qTkdrnA2r9xX1lS1_gQ7bsMOj5X-7vuC&ll=52.55426052529205%2C4.9826279976562615&z=9'},
+          {name:'OpenStreetMap', url:'https://www.openstreetmap.org/changeset/140207412#map=18/51.99729/5.09253'},
+          {name:'Google Foto\'s', url:'https://photos.google.com/'},
+          {name:'Google Agenda', url:'https://calendar.google.com/calendar/u/0/r'},
+          {name:'Webcams Nederland', url:'https://www.bekijkhet.nu/vid.html'},
+        ]},
+        { id: uid(), emoji:'🖥️', title:'Thuis Netwerk', links:[
+          {name:'Pi-hole', url:'http://192.168.178.43/admin/'},
+          {name:'FritzBox', url:'http://192.168.178.1/'},
+          {name:'NextCloud Memories', url:'https://richardcloud.mooo.com/index.php/apps/memories'},
+          {name:'NC Notes', url:'https://richardcloud.mooo.com/index.php/apps/notes'},
+          {name:'Tuin', url:'https://richardtuin.mooo.com/'},
+          {name:'Zonnepanelen', url:'https://server.growatt.com/login'},
+          {name:'Vind Telefoon', url:'https://www.google.com/android/find/?did=p6ZRoeAfCigQ7AbFrRc3KGJl8mouTv74LIAZAOoyij4%3D'},
+        ]},
+        { id: uid(), emoji:'🌐', title:'Overig', links:[
+          {name:'Second Life MP', url:'https://id.secondlife.com/openid/login?return_to=https%3A%2F%2Fmarketplace.secondlife.com%2F&language=en-US&show_join=true'},
+        ]},
       ]},
       { blocks: [
-        { id: uid(), emoji:'🛒', title:'Winkelen', links:[{name:'Bol.com',url:'https://bol.com'},{name:'Amazon NL',url:'https://amazon.nl'},{name:'Marktplaats',url:'https://marktplaats.nl'}]},
-        { id: uid(), emoji:'🏦', title:'Financiën', links:[{name:'ING',url:'https://ing.nl'},{name:'Belastingdienst',url:'https://belastingdienst.nl'}]},
+        { id: uid(), emoji:'📋', title:'Tab 2 — Blok 1', links:[]},
       ]}
     ],
     notes: [
@@ -801,6 +938,100 @@ function initQuicknote() {
       setTimeout(() => saved.classList.remove('show'), 2000);
     }, 600);
   });
+}
+
+// ─── Export / Import ──────────────────────────────────────────────────────
+function openExIm() {
+  // Refresh export textarea with current data
+  const exportData = {
+    version: 4,
+    exported: new Date().toISOString(),
+    data: data,
+    quicknote: document.getElementById('quicknote-text')?.value || ''
+  };
+  document.getElementById('exim-export-text').value = JSON.stringify(exportData, null, 2);
+  document.getElementById('exim-export-status').textContent = '';
+  document.getElementById('exim-import-status').textContent = '';
+  document.getElementById('exim-import-text').value = '';
+  switchEximTab('export');
+  document.getElementById('exim-modal').classList.remove('hidden');
+}
+
+function closeExIm() { document.getElementById('exim-modal').classList.add('hidden'); }
+document.getElementById('exim-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeExIm(); });
+
+function switchEximTab(tab) {
+  document.querySelectorAll('.exim-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='export')||(i===1&&tab==='import')));
+  document.getElementById('exim-export').classList.toggle('active', tab==='export');
+  document.getElementById('exim-import').classList.toggle('active', tab==='import');
+}
+
+function copyExport() {
+  const txt = document.getElementById('exim-export-text').value;
+  navigator.clipboard.writeText(txt).then(() => {
+    const s = document.getElementById('exim-export-status');
+    s.className = 'exim-status ok'; s.textContent = '✓ Gekopieerd naar klembord!';
+    setTimeout(() => s.textContent = '', 3000);
+  }).catch(() => {
+    document.getElementById('exim-export-text').select();
+    document.execCommand('copy');
+    const s = document.getElementById('exim-export-status');
+    s.className = 'exim-status ok'; s.textContent = '✓ Gekopieerd!';
+    setTimeout(() => s.textContent = '', 3000);
+  });
+}
+
+function downloadExport() {
+  const txt = document.getElementById('exim-export-text').value;
+  const date = new Date().toISOString().slice(0,10);
+  const blob = new Blob([txt], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `dashboard-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function loadImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('exim-import-text').value = e.target.result;
+    document.getElementById('exim-import-status').className = 'exim-status';
+    document.getElementById('exim-import-status').textContent = `📄 Bestand geladen: ${file.name}`;
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset so same file can be reloaded
+}
+
+function doImport() {
+  const txt = document.getElementById('exim-import-text').value.trim();
+  const s = document.getElementById('exim-import-status');
+  if (!txt) { s.className='exim-status err'; s.textContent='⚠ Geen data om te importeren.'; return; }
+  try {
+    const parsed = JSON.parse(txt);
+    // Accept both wrapped format (with .data) and raw data format
+    const imported = parsed.data || parsed;
+    if (!imported.tabs || !Array.isArray(imported.tabs)) throw new Error('Ongeldig formaat: geen tabs gevonden.');
+    if (!imported.notes || !Array.isArray(imported.notes)) imported.notes = [];
+    // Restore quicknote if present
+    if (parsed.quicknote !== undefined) {
+      try { localStorage.setItem('dash_quicknote', parsed.quicknote); } catch {}
+      const qn = document.getElementById('quicknote-text');
+      if (qn) { qn.value = parsed.quicknote; document.getElementById('quicknote-chars').textContent = parsed.quicknote.length + ' tekens'; }
+    }
+    data = imported;
+    save();
+    renderBlocks();
+    renderNotes();
+    s.className = 'exim-status ok';
+    s.textContent = '✓ Import geslaagd! Alle data is hersteld.';
+    setTimeout(() => closeExIm(), 1800);
+  } catch(e) {
+    s.className = 'exim-status err';
+    s.textContent = '✗ Fout: ' + e.message;
+  }
 }
 
 // ─── Init ──────────────────────────────────────────────────────────────────
