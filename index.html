@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="nl">
-<!-- versie 0.1  -->
+<!--  versie 3 -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Persoonlijk Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230f1117'/><rect width='64' height='64' rx='14' fill='url(%23g)'/><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%236c8fff'/><stop offset='1' stop-color='%23a78bfa'/></linearGradient></defs><text x='32' y='46' font-size='36' text-anchor='middle' font-family='system-ui'>⬡</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
@@ -179,7 +180,7 @@
     cursor: grab; color: var(--text3); font-size: 12px; padding: 0 2px 0 0;
     flex-shrink: 0; opacity: 0; transition: opacity 0.15s; user-select: none;
   }
-  .drag-handle:active { cursor: grabbing; } 
+  .drag-handle:active { cursor: grabbing; }
   .link-block:hover .drag-handle { opacity: 1; }
   .block-emoji { font-size: 15px; flex-shrink: 0; }
   .block-title { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -220,14 +221,28 @@
   }
 
   /* ── Notes ── */
-  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-  .note-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); overflow: hidden; display: flex; flex-direction: column; }
-  .note-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg3); border-bottom: 1px solid var(--border); }
-  .note-title-input { background: none; border: none; color: var(--text); font-family: var(--font); font-size: 14px; font-weight: 600; flex: 1; outline: none; min-width: 0; }
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; align-items: start; }
+  .note-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.15s; }
+  .note-card:hover { border-color: var(--border2); }
+  .note-card.sortable-chosen { opacity: 0.9; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border-color: var(--accent) !important; }
+  .note-card.sortable-ghost { opacity: 0.25; }
+  .note-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg3); border-bottom: 1px solid var(--border); cursor: grab; }
+  .note-header:active { cursor: grabbing; }
+  .note-drag-handle { color: var(--text3); font-size: 13px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; user-select: none; }
+  .note-card:hover .note-drag-handle { opacity: 1; }
+  .note-title-input { background: none; border: none; color: var(--text); font-family: var(--font); font-size: 14px; font-weight: 600; flex: 1; outline: none; min-width: 0; cursor: text; }
   .note-title-input::placeholder { color: var(--text3); }
-  .note-textarea { flex: 1; background: none; border: none; color: var(--text2); font-family: var(--font); font-size: 15px; padding: 12px 14px; outline: none; resize: none; min-height: 120px; line-height: 1.6; }
+  .note-textarea { flex: 1; background: none; border: none; color: var(--text2); font-family: var(--font); font-size: 15px; padding: 12px 14px; outline: none; resize: vertical; min-height: 120px; line-height: 1.6; }
   .note-textarea::placeholder { color: var(--text3); }
-  .note-footer { padding: 6px 14px; font-size: 12px; color: var(--text3); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .note-footer { padding: 6px 10px 6px 14px; font-size: 12px; color: var(--text3); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .note-size-btns { display: flex; gap: 3px; }
+  .btn-note-size {
+    background: none; border: 1px solid transparent; color: var(--text3);
+    cursor: pointer; font-size: 11px; font-family: var(--font); padding: 2px 6px;
+    border-radius: 4px; transition: all 0.15s;
+  }
+  .btn-note-size:hover { color: var(--text); border-color: var(--border2); background: var(--bg4); }
+  .btn-note-size.active { color: var(--accent); border-color: var(--accent); background: rgba(108,143,255,0.1); }
   .btn-del-note { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 13px; font-family: var(--font); padding: 2px 6px; border-radius: 4px; transition: all 0.15s; }
   .btn-del-note:hover { color: var(--danger); background: rgba(248,113,113,0.1); }
   .add-note-btn {
@@ -745,35 +760,74 @@ function closeModal() { document.getElementById('edit-modal').classList.add('hid
 document.getElementById('edit-modal').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
 
 // ─── Notes ────────────────────────────────────────────────────────────────
+const NOTE_HEIGHTS = { S: '120px', M: '220px', L: '380px', XL: '560px' };
+
 function renderNotes() {
   const grid = document.getElementById('notes-grid');
+  if (grid._sortable) { grid._sortable.destroy(); grid._sortable = null; }
   grid.innerHTML = '';
   data.notes.forEach(note => {
     const card = document.createElement('div');
     card.className = 'note-card';
+    card.dataset.id = note.id;
     const updated = new Date(note.updated).toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const size = note.size || 'M';
+    const sizeBtns = Object.keys(NOTE_HEIGHTS).map(s =>
+      `<button class="btn-note-size${size===s?' active':''}" onclick="setNoteSize('${note.id}','${s}')">${s}</button>`
+    ).join('');
     card.innerHTML = `
       <div class="note-header">
+        <span class="note-drag-handle">⠿</span>
         <input class="note-title-input" placeholder="Titel…" value="${esc(note.title)}" oninput="updateNote('${note.id}','title',this.value)">
       </div>
-      <textarea class="note-textarea" placeholder="Schrijf hier…" oninput="updateNote('${note.id}','body',this.value)">${esc(note.body)}</textarea>
+      <textarea class="note-textarea" placeholder="Schrijf hier…" oninput="updateNote('${note.id}','body',this.value)" style="min-height:${NOTE_HEIGHTS[size]}">${esc(note.body)}</textarea>
       <div class="note-footer">
         <span>Bijgewerkt: ${updated}</span>
-        <button class="btn-del-note" onclick="deleteNote('${note.id}')">Verwijder</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="note-size-btns">${sizeBtns}</div>
+          <button class="btn-del-note" onclick="deleteNote('${note.id}')">Verwijder</button>
+        </div>
       </div>`;
     grid.appendChild(card);
+  });
+
+  // Init sortable on notes grid
+  grid._sortable = Sortable.create(grid, {
+    handle: '.note-header',
+    animation: 160,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    filter: '.note-title-input, .note-textarea',
+    preventOnFilter: false,
+    onEnd: evt => {
+      const moved = data.notes.splice(evt.oldIndex, 1)[0];
+      data.notes.splice(evt.newIndex, 0, moved);
+      save();
+    }
   });
 }
 
 function addNote() {
-  data.notes.unshift({id:uid(),title:'',body:'',updated:Date.now()});
+  data.notes.unshift({id:uid(),title:'',body:'',size:'M',updated:Date.now()});
   save(); renderNotes();
   setTimeout(() => document.querySelector('.note-title-input')?.focus(), 50);
 }
+
+function setNoteSize(id, size) {
+  const n = data.notes.find(n=>n.id===id);
+  if (n) { n.size=size; n.updated=Date.now(); save(); }
+  // Update DOM without full re-render
+  const card = document.querySelector(`.note-card[data-id="${id}"]`);
+  if (card) {
+    card.querySelector('.note-textarea').style.minHeight = NOTE_HEIGHTS[size];
+    card.querySelectorAll('.btn-note-size').forEach(btn => btn.classList.toggle('active', btn.textContent===size));
+  }
+}
+
 function updateNote(id,field,val) {
   const n = data.notes.find(n=>n.id===id);
   if (n) { n[field]=val; n.updated=Date.now(); save(); }
-  const card = document.querySelector(`[oninput*="${id}"]`)?.closest('.note-card');
+  const card = document.querySelector(`.note-card[data-id="${id}"]`);
   if (card) { const f=card.querySelector('.note-footer span'); if(f) f.textContent='Bijgewerkt: '+new Date().toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 }
 function deleteNote(id) { data.notes=data.notes.filter(n=>n.id!==id); save(); renderNotes(); }
