@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="nl">
+<!-- versie 0.1  -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -178,7 +179,7 @@
     cursor: grab; color: var(--text3); font-size: 12px; padding: 0 2px 0 0;
     flex-shrink: 0; opacity: 0; transition: opacity 0.15s; user-select: none;
   }
-  .drag-handle:active { cursor: grabbing; }
+  .drag-handle:active { cursor: grabbing; } 
   .link-block:hover .drag-handle { opacity: 1; }
   .block-emoji { font-size: 15px; flex-shrink: 0; }
   .block-title { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -268,6 +269,40 @@
   .btn-danger { padding: 8px 14px; border-radius: var(--radius); border: 1px solid rgba(248,113,113,0.3); background: none; color: var(--danger); cursor: pointer; font-size: 14px; font-family: var(--font); transition: all 0.15s; margin-right: auto; }
   .btn-danger:hover { background: rgba(248,113,113,0.1); }
 
+  /* ── Export / Import ── */
+  .btn-exim {
+    padding: 6px 13px; border-radius: 7px; border: 1px solid var(--border2);
+    background: var(--bg3); color: var(--text2); font-family: var(--font);
+    font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-exim:hover { color: var(--text); border-color: var(--accent); background: var(--bg4); }
+
+  .exim-modal { max-width: 540px; }
+  .exim-tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .exim-tab {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid transparent;
+    background: none; color: var(--text2); font-family: var(--font);
+    font-size: 13px; cursor: pointer; transition: all 0.15s;
+  }
+  .exim-tab.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+  .exim-tab:hover:not(.active) { background: var(--bg3); color: var(--text); }
+  .exim-section { display: none; }
+  .exim-section.active { display: block; }
+  .exim-textarea {
+    width: 100%; height: 200px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text2); font-family: var(--mono); font-size: 12px;
+    padding: 10px 12px; outline: none; resize: vertical; transition: border-color 0.15s; line-height: 1.5;
+  }
+  .exim-textarea:focus { border-color: var(--accent); }
+  .exim-hint { font-size: 12px; color: var(--text3); margin-bottom: 8px; line-height: 1.5; }
+  .exim-status { font-size: 13px; margin-top: 8px; min-height: 20px; }
+  .exim-status.ok { color: var(--accent3); }
+  .exim-status.err { color: var(--danger); }
+  .btn-full { width: 100%; padding: 9px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); font-family: var(--font); font-size: 14px; cursor: pointer; transition: all 0.15s; margin-bottom: 8px; text-align: left; }
+  .btn-full:hover { border-color: var(--accent); color: var(--text); background: var(--bg4); }
+  .btn-full.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  .btn-full.primary:hover { opacity: 0.85; }
+
   /* ── Snelnotitie widget ── */
   .quicknote-textarea {
     width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
@@ -299,6 +334,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button class="btn-exim" onclick="openExIm()">⬍ Export / Import</button>
     <div id="datetime-mini"></div>
   </div>
 </div>
@@ -451,6 +487,41 @@
       <button class="btn-danger" id="btn-delete-block" onclick="deleteBlock()">Verwijder blok</button>
       <button class="btn-cancel" onclick="closeModal()">Annuleren</button>
       <button class="btn-save" onclick="saveBlock()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export / Import Modal -->
+<div class="modal-overlay hidden" id="exim-modal">
+  <div class="modal exim-modal">
+    <div class="modal-header">
+      <span class="modal-title">Export / Import</span>
+      <button class="modal-close" onclick="closeExIm()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="exim-tabs">
+        <button class="exim-tab active" onclick="switchEximTab('export')">⬆ Export</button>
+        <button class="exim-tab" onclick="switchEximTab('import')">⬇ Import</button>
+      </div>
+
+      <!-- Export -->
+      <div class="exim-section active" id="exim-export">
+        <p class="exim-hint">Kopieer de JSON hieronder en sla hem op als backup. Je kunt hem later importeren op een andere browser of apparaat.</p>
+        <textarea class="exim-textarea" id="exim-export-text" readonly spellcheck="false"></textarea>
+        <button class="btn-full primary" onclick="copyExport()" style="margin-top:8px">⎘ Kopieer naar klembord</button>
+        <button class="btn-full" onclick="downloadExport()">⬇ Download als .json bestand</button>
+        <div class="exim-status" id="exim-export-status"></div>
+      </div>
+
+      <!-- Import -->
+      <div class="exim-section" id="exim-import">
+        <p class="exim-hint">Plak een eerder geëxporteerde JSON hieronder, of upload een .json bestand. <strong style="color:var(--warning)">Let op: dit overschrijft alle huidige data.</strong></p>
+        <button class="btn-full" onclick="document.getElementById('exim-file-input').click()">📂 Kies .json bestand…</button>
+        <input type="file" id="exim-file-input" accept=".json,application/json" style="display:none" onchange="loadImportFile(event)">
+        <textarea class="exim-textarea" id="exim-import-text" placeholder="Of plak JSON hier…" spellcheck="false"></textarea>
+        <button class="btn-full primary" onclick="doImport()" style="margin-top:8px">⬇ Importeren</button>
+        <div class="exim-status" id="exim-import-status"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -868,6 +939,100 @@ function initQuicknote() {
       setTimeout(() => saved.classList.remove('show'), 2000);
     }, 600);
   });
+}
+
+// ─── Export / Import ──────────────────────────────────────────────────────
+function openExIm() {
+  // Refresh export textarea with current data
+  const exportData = {
+    version: 4,
+    exported: new Date().toISOString(),
+    data: data,
+    quicknote: document.getElementById('quicknote-text')?.value || ''
+  };
+  document.getElementById('exim-export-text').value = JSON.stringify(exportData, null, 2);
+  document.getElementById('exim-export-status').textContent = '';
+  document.getElementById('exim-import-status').textContent = '';
+  document.getElementById('exim-import-text').value = '';
+  switchEximTab('export');
+  document.getElementById('exim-modal').classList.remove('hidden');
+}
+
+function closeExIm() { document.getElementById('exim-modal').classList.add('hidden'); }
+document.getElementById('exim-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeExIm(); });
+
+function switchEximTab(tab) {
+  document.querySelectorAll('.exim-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='export')||(i===1&&tab==='import')));
+  document.getElementById('exim-export').classList.toggle('active', tab==='export');
+  document.getElementById('exim-import').classList.toggle('active', tab==='import');
+}
+
+function copyExport() {
+  const txt = document.getElementById('exim-export-text').value;
+  navigator.clipboard.writeText(txt).then(() => {
+    const s = document.getElementById('exim-export-status');
+    s.className = 'exim-status ok'; s.textContent = '✓ Gekopieerd naar klembord!';
+    setTimeout(() => s.textContent = '', 3000);
+  }).catch(() => {
+    document.getElementById('exim-export-text').select();
+    document.execCommand('copy');
+    const s = document.getElementById('exim-export-status');
+    s.className = 'exim-status ok'; s.textContent = '✓ Gekopieerd!';
+    setTimeout(() => s.textContent = '', 3000);
+  });
+}
+
+function downloadExport() {
+  const txt = document.getElementById('exim-export-text').value;
+  const date = new Date().toISOString().slice(0,10);
+  const blob = new Blob([txt], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `dashboard-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function loadImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('exim-import-text').value = e.target.result;
+    document.getElementById('exim-import-status').className = 'exim-status';
+    document.getElementById('exim-import-status').textContent = `📄 Bestand geladen: ${file.name}`;
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset so same file can be reloaded
+}
+
+function doImport() {
+  const txt = document.getElementById('exim-import-text').value.trim();
+  const s = document.getElementById('exim-import-status');
+  if (!txt) { s.className='exim-status err'; s.textContent='⚠ Geen data om te importeren.'; return; }
+  try {
+    const parsed = JSON.parse(txt);
+    // Accept both wrapped format (with .data) and raw data format
+    const imported = parsed.data || parsed;
+    if (!imported.tabs || !Array.isArray(imported.tabs)) throw new Error('Ongeldig formaat: geen tabs gevonden.');
+    if (!imported.notes || !Array.isArray(imported.notes)) imported.notes = [];
+    // Restore quicknote if present
+    if (parsed.quicknote !== undefined) {
+      try { localStorage.setItem('dash_quicknote', parsed.quicknote); } catch {}
+      const qn = document.getElementById('quicknote-text');
+      if (qn) { qn.value = parsed.quicknote; document.getElementById('quicknote-chars').textContent = parsed.quicknote.length + ' tekens'; }
+    }
+    data = imported;
+    save();
+    renderBlocks();
+    renderNotes();
+    s.className = 'exim-status ok';
+    s.textContent = '✓ Import geslaagd! Alle data is hersteld.';
+    setTimeout(() => closeExIm(), 1800);
+  } catch(e) {
+    s.className = 'exim-status err';
+    s.textContent = '✗ Fout: ' + e.message;
+  }
 }
 
 // ─── Init ──────────────────────────────────────────────────────────────────
